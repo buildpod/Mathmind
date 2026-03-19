@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MathMind — Free Accessible Math Worksheets</title>
+<meta name="description" content="Free printable math worksheets designed for children with autism and diverse learning needs. Accessible layouts, large writing boxes, clear structure.">
+<meta name="keywords" content="math worksheets, autism, accessible learning, printable, free, special needs, children">
+<meta property="og:title" content="MathMind — Free Accessible Math Worksheets">
+<meta property="og:description" content="Free printable math worksheets designed for children with autism and diverse learning needs.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Nunito', 'Segoe UI', sans-serif; background: #f8fafc; }
+  input[type=range] { height: 6px; }
+  button { font-family: inherit; }
+  @media print {
+    .noprint { display: none !important; }
+    body { background: white !important; }
+    .printpage { page-break-after: always; break-after: page; }
+    .printpage:last-child { page-break-after: auto; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
+  @page { margin: 6mm; size: A4; }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.4s ease-out; }
+  .slide-down { animation: slideDown 0.3s ease-out; }
+
+  /* Button hover */
+  .btn-hover:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn-hover:active { transform: translateY(0) scale(0.98); }
+  .btn-hover { transition: all 0.15s ease; }
+
+  /* Topic card hover */
+  .topic-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+  .topic-card { transition: all 0.15s ease; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const TOPICS = [
+  { key: "addition", label: "Addition", emoji: "\u2795", color: "#059669" },
+  { key: "subtraction", label: "Subtraction", emoji: "\u2796", color: "#7c3aed" },
+  { key: "comparison", label: "Greater / Less / Equal", emoji: "\u2696\uFE0F", color: "#2563eb" },
+  { key: "patterns", label: "Number Patterns", emoji: "\uD83D\uDD22", color: "#d97706" },
+  { key: "multiplication", label: "Multiplication", emoji: "\u2716\uFE0F", color: "#dc2626" },
+  { key: "placeValue", label: "Place Value", emoji: "\uD83C\uDFD7\uFE0F", color: "#0891b2" },
+  { key: "missingNumber", label: "Missing Numbers", emoji: "\u2753", color: "#be185d" },
+  { key: "oddEven", label: "Odd & Even", emoji: "\uD83C\uDFAF", color: "#4f46e5" },
+];
+
+const DIFFICULTIES = [
+  { key: "easy", label: "Starter (1\u201320)", max: 20 },
+  { key: "medium", label: "Explorer (1\u201350)", max: 50 },
+  { key: "hard", label: "Master (1\u2013100)", max: 100 },
+];
+
+const LAYOUTS = [
+  { key: "standard", label: "Standard", boxPx: 40, fontPx: 20, gapPx: 10, perPage: 12, desc: "Regular layout" },
+  { key: "large", label: "Large Boxes", boxPx: 56, fontPx: 24, gapPx: 14, perPage: 8, desc: "Bigger writing space" },
+  { key: "spacious", label: "Extra Spacious", boxPx: 68, fontPx: 28, gapPx: 20, perPage: 6, desc: "Maximum space" },
+];
+
+function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+
+function makeProblems(topicKey, diffKey, count) {
+  var mx = DIFFICULTIES.find(d => d.key === diffKey).max;
+  var out = [];
+  for (var i = 0; i < count; i++) {
+    if (topicKey === "addition") {
+      var a = rand(1, mx - 1), b = rand(1, Math.max(1, mx - a));
+      out.push({ kind: "eq", text: a + " + " + b + " =", ans: "" + (a + b) });
+    } else if (topicKey === "subtraction") {
+      var a2 = rand(2, mx), b2 = rand(1, a2 - 1);
+      out.push({ kind: "eq", text: a2 + " \u2212 " + b2 + " =", ans: "" + (a2 - b2) });
+    } else if (topicKey === "comparison") {
+      var ca = rand(0, mx), cb = Math.random() < 0.25 ? ca : rand(0, mx);
+      out.push({ kind: "cmp", left: ca, right: cb, ans: ca > cb ? ">" : ca < cb ? "<" : "=" });
+    } else if (topicKey === "patterns") {
+      var step = rand(2, diffKey === "easy" ? 5 : 10), start = rand(0, 10);
+      var seq = []; for (var j = 0; j < 8; j++) seq.push(start + j * step);
+      var hide = {}; while (Object.keys(hide).length < 3) hide[rand(3, 7)] = true;
+      var disp = seq.map((v, k) => hide[k] ? null : v);
+      var ansArr = []; seq.forEach((v, k) => { if (hide[k]) ansArr.push(v); });
+      out.push({ kind: "pat", display: disp, rule: "+" + step, ans: ansArr.join(", ") });
+    } else if (topicKey === "multiplication") {
+      var ma = rand(1, diffKey === "easy" ? 5 : 10), mb = rand(1, diffKey === "easy" ? 5 : 10);
+      out.push({ kind: "eq", text: ma + " \u00d7 " + mb + " =", ans: "" + (ma * mb) });
+    } else if (topicKey === "placeValue") {
+      var num = rand(11, mx), t = Math.floor(num / 10), o = num % 10;
+      out.push({ kind: "pv", number: num, ans: t + " tens " + o + " ones" });
+    } else if (topicKey === "missingNumber") {
+      var tot = rand(5, mx), pt = rand(1, tot - 1), ot = tot - pt;
+      out.push(Math.random() > 0.5
+        ? { kind: "eq", text: "___ + " + pt + " = " + tot, ans: "" + ot }
+        : { kind: "eq", text: tot + " \u2212 ___ = " + ot, ans: "" + pt });
+    } else if (topicKey === "oddEven") {
+      var n = rand(1, mx);
+      out.push({ kind: "oe", number: n, ans: n % 2 === 0 ? "Even" : "Odd" });
+    }
+  }
+  return out;
+}
+
+function chunk(arr, size) {
+  var res = []; for (var i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size));
+  return res;
+}
+
+/* ---- Build standalone printable HTML string ---- */
+function buildPrintHTML(problems, topicObj, diffObj, layoutObj, childName, includeAnswers) {
+  var clr = topicObj.color, fs = layoutObj.fontPx, box = layoutObj.boxPx, gap = layoutObj.gapPx;
+  var pages = chunk(problems, layoutObj.perPage);
+  var html = "";
+
+  pages.forEach(function(pg, pi) {
+    if (pi > 0) html += '<div style="page-break-before:always;height:0;"></div>';
+    html += '<div style="padding:10mm 8mm;">';
+
+    /* Header */
+    html += '<div style="background:' + clr + ';border-radius:10px;padding:10px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+    html += '<span style="color:white;font-weight:800;font-size:20px;">' + topicObj.emoji + ' ' + topicObj.label + '</span>';
+    html += '<span style="color:rgba(255,255,255,0.8);font-size:12px;">Page ' + (pi + 1) + ' / ' + pages.length + '</span></div>';
+
+    /* Meta */
+    html += '<div style="display:flex;justify-content:space-between;padding:6px 2px 10px;border-bottom:2px solid #e5e7eb;margin-bottom:' + gap + 'px;font-size:12px;color:#6b7280;">';
+    html += '<span>' + diffObj.label + ' | ' + layoutObj.desc + '</span>';
+    html += '<span style="color:#374151;">Name: ' + (childName || '______________________') + '&nbsp;&nbsp;&nbsp;Date: ___________</span></div>';
+
+    /* Rows */
+    pg.forEach(function(prob, idx) {
+      var num = pi * layoutObj.perPage + idx + 1;
+      var bg = num % 2 === 1 ? "#f0fdf4" : "#eff6ff";
+      var ansBox = '<div style="width:' + box + 'px;height:' + box + 'px;border-radius:8px;border:2.5px solid ' + clr + ';background:#fefce8;display:inline-block;flex-shrink:0;"></div>';
+      var sBox = '<div style="width:' + (box-6) + 'px;height:' + (box-6) + 'px;border-radius:8px;border:2.5px solid ' + clr + ';background:#fefce8;display:inline-block;vertical-align:middle;"></div>';
+
+      html += '<div style="background:' + bg + ';border-radius:10px;padding:' + gap + 'px ' + (gap+6) + 'px;display:flex;align-items:center;gap:14px;min-height:' + (box+14) + 'px;margin-bottom:' + (gap-2) + 'px;">';
+      html += '<span style="background:' + clr + ';color:white;border-radius:8px;font-weight:800;font-size:13px;min-width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">' + num + '</span>';
+
+      if (prob.kind === "eq") {
+        html += '<span style="font-size:' + fs + 'px;font-weight:700;color:#1e293b;margin-right:14px;">' + prob.text + '</span>' + ansBox;
+      } else if (prob.kind === "cmp") {
+        html += '<span style="font-size:' + fs + 'px;font-weight:700;color:#1e293b;min-width:48px;text-align:right;margin-right:12px;">' + prob.left + '</span>' + ansBox + '<span style="font-size:' + fs + 'px;font-weight:700;color:#1e293b;margin-left:12px;">' + prob.right + '</span>';
+      } else if (prob.kind === "pat") {
+        html += '<span style="font-size:12px;color:#6b7280;font-weight:700;margin-right:8px;">Rule: ' + prob.rule + '</span>';
+        prob.display.forEach(function(val) {
+          if (val === null) html += '<div style="width:' + (box-8) + 'px;height:' + (box-12) + 'px;border-radius:6px;border:2.5px solid ' + clr + ';background:#fefce8;display:inline-flex;align-items:center;justify-content:center;margin:2px;"></div>';
+          else html += '<div style="width:' + (box-8) + 'px;height:' + (box-12) + 'px;border-radius:6px;border:1.5px solid #d1d5db;background:white;display:inline-flex;align-items:center;justify-content:center;font-size:' + (fs-6) + 'px;font-weight:700;color:#1e293b;margin:2px;">' + val + '</div>';
+        });
+      } else if (prob.kind === "pv") {
+        html += '<span style="font-size:' + fs + 'px;font-weight:700;color:#1e293b;">' + prob.number + '</span><span style="color:#6b7280;font-size:' + fs + 'px;margin:0 8px;">=</span>' + sBox + '<span style="font-weight:600;color:#374151;font-size:' + (fs-4) + 'px;margin:0 8px;">tens</span>' + sBox + '<span style="font-weight:600;color:#374151;font-size:' + (fs-4) + 'px;margin:0 8px;">ones</span>';
+      } else if (prob.kind === "oe") {
+        html += '<span style="font-size:' + fs + 'px;font-weight:700;color:#1e293b;margin-right:10px;">' + prob.number + '</span><span style="color:#6b7280;font-size:' + (fs-6) + 'px;margin-right:10px;">is</span>';
+        html += '<div style="padding:6px 16px;border-radius:8px;border:2.5px solid #059669;font-size:' + (fs-6) + 'px;font-weight:700;color:#059669;display:inline-block;margin-right:8px;">ODD</div>';
+        html += '<div style="padding:6px 16px;border-radius:8px;border:2.5px solid #2563eb;font-size:' + (fs-6) + 'px;font-weight:700;color:#2563eb;display:inline-block;">EVEN</div>';
+        html += '<span style="color:#94a3b8;font-size:11px;margin-left:8px;">(circle one)</span>';
+      }
+      html += '</div>';
+    });
+
+    if (pi === pages.length - 1) {
+      html += '<div style="margin-top:' + (gap+4) + 'px;text-align:center;padding:10px;background:#f0fdf4;border-radius:8px;color:' + clr + ';font-weight:800;font-size:14px;">Amazing work! You are a math star! \u2B50</div>';
+    }
+    html += '</div>';
+  });
+
+  /* Optional answer key page */
+  if (includeAnswers) {
+    html += '<div style="page-break-before:always;height:0;"></div>';
+    html += '<div style="padding:10mm 8mm;">';
+    html += '<h2 style="color:#6b7280;margin-bottom:12px;font-size:16px;">Answer Key \u2014 ' + topicObj.label + '</h2>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+    problems.forEach(function(p, i) {
+      html += '<span style="background:#f3f4f6;padding:4px 12px;border-radius:6px;font-size:13px;font-weight:600;">#' + (i+1) + ': ' + p.ans + '</span>';
+    });
+    html += '</div></div>';
+  }
+
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MathMind - ' + topicObj.label + ' Worksheet</title><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{font-family:Nunito,sans-serif;}@page{margin:4mm;size:A4;}.no-print-btn{background:#059669;color:white;border:none;border-radius:8px;padding:10px 28px;font-weight:800;cursor:pointer;font-size:15px;font-family:Nunito,sans-serif;margin:4px;}@media print{.topbar{display:none!important;}}</style></head><body><div class="topbar" style="background:#f0fdf4;padding:14px 20px;text-align:center;border-bottom:2px solid #d1fae5;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:800;color:#059669;font-size:15px;">\uD83E\uDDE0 MathMind Worksheet</span><button class="no-print-btn" onclick="window.print();">\uD83D\uDDA8\uFE0F Print / Save as PDF</button></div>' + html + '</body></html>';
+}
+
+function downloadFile(content, filename) {
+  var blob = new Blob([content], { type: "text/html;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---- Components ---- */
+function AnswerBox({ size, color }) {
+  return <div style={{ width: size, height: size, borderRadius: 8, border: "2.5px solid " + color, background: "#fefce8", flexShrink: 0 }} />;
+}
+
+function ProblemRow({ prob, num, topicColor: tc, layout: lo }) {
+  var bg = num % 2 === 1 ? "#f0fdf4" : "#eff6ff";
+  var fs = lo.fontPx, box = lo.boxPx;
+  return (
+    <div style={{ background: bg, borderRadius: 10, padding: lo.gapPx + "px " + (lo.gapPx+6) + "px", display: "flex", alignItems: "center", gap: 14, minHeight: box + 12 }}>
+      <span style={{ background: tc, color: "white", borderRadius: 8, fontWeight: 800, fontSize: 13, minWidth: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{num}</span>
+      {prob.kind === "eq" && <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1 }}><span style={{ fontSize: fs, fontWeight: 700, color: "#1e293b" }}>{prob.text}</span><AnswerBox size={box} color={tc} /></div>}
+      {prob.kind === "cmp" && <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1 }}><span style={{ fontSize: fs, fontWeight: 700, color: "#1e293b", minWidth: 48, textAlign: "right" }}>{prob.left}</span><AnswerBox size={box} color={tc} /><span style={{ fontSize: fs, fontWeight: 700, color: "#1e293b" }}>{prob.right}</span></div>}
+      {prob.kind === "pat" && <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}><span style={{ fontSize: 12, color: "#6b7280", fontWeight: 700, marginRight: 6 }}>Rule: {prob.rule}</span>{prob.display.map((val, j) => <div key={j} style={{ width: box-8, height: box-12, borderRadius: 6, border: val === null ? "2.5px solid " + tc : "1.5px solid #d1d5db", background: val === null ? "#fefce8" : "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: fs-6, fontWeight: 700, color: "#1e293b" }}>{val !== null ? val : ""}</div>)}</div>}
+      {prob.kind === "pv" && <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, fontSize: fs }}><span style={{ fontWeight: 700, color: "#1e293b" }}>{prob.number}</span><span style={{ color: "#6b7280" }}>=</span><AnswerBox size={box-6} color={tc} /><span style={{ fontWeight: 600, color: "#374151", fontSize: fs-4 }}>tens</span><AnswerBox size={box-6} color={tc} /><span style={{ fontWeight: 600, color: "#374151", fontSize: fs-4 }}>ones</span></div>}
+      {prob.kind === "oe" && <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1 }}><span style={{ fontSize: fs, fontWeight: 700, color: "#1e293b" }}>{prob.number}</span><span style={{ color: "#6b7280", fontSize: fs-6 }}>is</span><div style={{ padding: "6px 16px", borderRadius: 8, border: "2.5px solid #059669", fontSize: fs-6, fontWeight: 700, color: "#059669" }}>ODD</div><div style={{ padding: "6px 16px", borderRadius: 8, border: "2.5px solid #2563eb", fontSize: fs-6, fontWeight: 700, color: "#2563eb" }}>EVEN</div><span style={{ color: "#94a3b8", fontSize: 11 }}>(circle one)</span></div>}
+    </div>
+  );
+}
+
+function Section({ label, children }) {
+  return <div style={{ marginBottom: 20 }}><label style={{ fontWeight: 700, fontSize: 13, color: "#475569", display: "block", marginBottom: 8 }}>{label}</label>{children}</div>;
+}
+
+function Btn({ onClick, bg, color, children, style: extraStyle }) {
+  return <button className="btn-hover" onClick={onClick} style={{ background: bg, color: color, border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13, ...extraStyle }}>{children}</button>;
+}
+
+/* ---- Main App ---- */
+function App() {
+  const [topic, setTopic] = useState("addition");
+  const [difficulty, setDifficulty] = useState("easy");
+  const [layoutKey, setLayoutKey] = useState("large");
+  const [count, setCount] = useState(10);
+  const [childName, setChildName] = useState("");
+  const [problems, setProblems] = useState(null);
+  const [showAnswers, setShowAnswers] = useState(false);
+  const [screen, setScreen] = useState("home");
+  const [downloads, setDownloads] = useState(0);
+  const [flash, setFlash] = useState("");
+
+  const topicObj = TOPICS.find(t => t.key === topic);
+  const layoutObj = LAYOUTS.find(l => l.key === layoutKey);
+  const diffObj = DIFFICULTIES.find(d => d.key === difficulty);
+  const clr = topicObj.color;
+
+  function doFlash(msg) { setFlash(msg); setTimeout(() => setFlash(""), 2500); }
+
+  function handleGenerate() {
+    setProblems(makeProblems(topic, difficulty, count));
+    setShowAnswers(false);
+    setScreen("sheet");
+  }
+
+  function handleDownload(withAnswers) {
+    var html = buildPrintHTML(problems, topicObj, diffObj, layoutObj, childName, withAnswers);
+    downloadFile(html, "MathMind-" + topicObj.label.replace(/[^a-zA-Z]/g, "") + (withAnswers ? "-with-answers" : "") + ".html");
+    setDownloads(d => d + 1);
+    doFlash(withAnswers ? "Worksheet + Answers downloaded!" : "Worksheet downloaded!");
+  }
+
+  function handleWhatsApp() {
+    var msg = "\uD83E\uDDE0 *MathMind* \u2014 Free Accessible Math Worksheets\n\nFree printable math worksheets designed for children with autism and diverse learning needs. Large writing boxes, clear structure, 8 topics, 3 difficulty levels.\n\nTry it free: " + window.location.href;
+    window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+  }
+
+  /* ===== SHEET VIEW ===== */
+  if (screen === "sheet" && problems) {
+    var pages = chunk(problems, layoutObj.perPage);
+    return (
+      <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
+        {/* Toolbar */}
+        <div className="noprint slide-down" style={{
+          position: "sticky", top: 0, zIndex: 50, background: "white",
+          borderBottom: "2px solid #e5e7eb", padding: "10px 12px",
+          display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center",
+        }}>
+          <Btn onClick={() => setScreen("home")} bg="#e5e7eb" color="#374151">{"\u2190 Back"}</Btn>
+          <Btn onClick={() => handleDownload(false)} bg={clr} color="white">{"\u2B07\uFE0F Download Worksheet"}</Btn>
+          <Btn onClick={() => handleDownload(true)} bg="#1e40af" color="white">{"\uD83D\uDCCB With Answers"}</Btn>
+          <Btn onClick={() => setShowAnswers(!showAnswers)} bg={showAnswers ? "#dc2626" : "#94a3b8"} color="white">
+            {showAnswers ? "\u2716 Hide Answers" : "\uD83D\uDC41 Preview Answers"}
+          </Btn>
+          <Btn onClick={handleGenerate} bg="#f59e0b" color="white">{"\uD83D\uDD04 New Problems"}</Btn>
+          <Btn onClick={handleWhatsApp} bg="#25d366" color="white">{"\uD83D\uDCE8 WhatsApp"}</Btn>
+
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+            {flash && <span className="slide-down" style={{ background: "#dcfce7", color: "#16a34a", padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700 }}>{"\u2705 " + flash}</span>}
+            {downloads > 0 && <div style={{ background: "#f3f4f6", borderRadius: 10, padding: "4px 14px", textAlign: "center" }}>
+              <div style={{ fontWeight: 900, fontSize: 16, color: "#374151" }}>{downloads}</div>
+              <div style={{ fontSize: 9, color: "#6b7280" }}>downloaded</div>
+            </div>}
+          </div>
+        </div>
+
+        {/* How-to tip */}
+        <div className="noprint" style={{ background: "#eff6ff", borderBottom: "1px solid #bfdbfe", padding: "8px 16px", fontSize: 12, color: "#1e40af" }}>
+          <b>How to print:</b> Download the worksheet \u2192 open the downloaded file in Chrome/Safari \u2192 click the Print button in the file (or Ctrl+P / Cmd+P). Choose "Save as PDF" as printer to save as PDF.
+        </div>
+
+        {/* Preview pages */}
+        {pages.map((pg, pi) => (
+          <div key={pi} className={"printpage fade-in"} style={{ maxWidth: 720, margin: "0 auto", padding: "16px 20px 24px" }}>
+            <div style={{ background: clr, borderRadius: 10, padding: "10px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ color: "white", fontWeight: 800, fontSize: 19 }}>{topicObj.emoji + " " + topicObj.label}</span>
+              <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 12 }}>Page {pi + 1} / {pages.length}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 2px 10px", borderBottom: "2px solid #e5e7eb", marginBottom: layoutObj.gapPx, fontSize: 12, color: "#6b7280" }}>
+              <span>{diffObj.label} | {layoutObj.desc}</span>
+              <span style={{ color: "#374151" }}>Name: {childName || "___________________"} &nbsp; Date: ___________</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: layoutObj.gapPx }}>
+              {pg.map((prob, idx) => <ProblemRow key={idx} prob={prob} num={pi * layoutObj.perPage + idx + 1} topicColor={clr} layout={layoutObj} />)}
+            </div>
+            {pi === pages.length - 1 && (
+              <div style={{ marginTop: layoutObj.gapPx + 4, textAlign: "center", padding: 10, background: "#f0fdf4", borderRadius: 8, color: clr, fontWeight: 800, fontSize: 14 }}>
+                Amazing work! You are a math star! {"\u2B50"}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Inline answers preview */}
+        {showAnswers && (
+          <div className="noprint fade-in" style={{ maxWidth: 720, margin: "8px auto 32px", padding: "0 20px" }}>
+            <div style={{ background: "white", borderRadius: 12, padding: 16, border: "1px solid #e5e7eb" }}>
+              <h3 style={{ margin: "0 0 10px", color: "#6b7280", fontSize: 14 }}>Answer Key (preview only \u2014 not in downloaded worksheet)</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {problems.map((p, i) => <span key={i} style={{ background: "#f3f4f6", padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>#{i+1}: {p.ans}</span>)}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ===== HOME VIEW ===== */
+  return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(145deg, #ecfdf5 0%, #eff6ff 50%, #faf5ff 100%)" }}>
+      {/* Hero */}
+      <div className="fade-in" style={{ textAlign: "center", padding: "36px 20px 12px" }}>
+        <div style={{ fontSize: 52, lineHeight: 1 }}>{"\uD83E\uDDE0"}</div>
+        <h1 style={{ fontSize: 34, fontWeight: 900, color: "#1e293b", margin: "6px 0 4px", letterSpacing: -1 }}>MathMind</h1>
+        <p style={{ fontSize: 14, color: "#64748b", margin: "0 auto", maxWidth: 420, lineHeight: 1.6 }}>
+          Free printable math worksheets designed for every learner.<br />
+          Accessible layouts &bull; Clear structure &bull; Made with love
+        </p>
+      </div>
+
+      {/* Download counter */}
+      {downloads > 0 && (
+        <div className="fade-in" style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+          <div style={{ background: "white", borderRadius: 12, padding: "8px 28px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", border: "1px solid #e5e7eb" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#059669" }}>{downloads}</div>
+            <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 600 }}>Worksheet{downloads !== 1 ? "s" : ""} Downloaded</div>
+          </div>
+        </div>
+      )}
+
+      {/* Config */}
+      <div className="fade-in" style={{ maxWidth: 520, margin: "12px auto 20px", background: "white", borderRadius: 18, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", padding: "28px 28px 22px", border: "1px solid #e5e7eb" }}>
+
+        <Section label="Child's Name (optional)">
+          <input value={childName} onChange={e => setChildName(e.target.value)} placeholder="Shows on printed sheet"
+            style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "2px solid #e5e7eb", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", transition: "border 0.2s" }}
+            onFocus={e => e.target.style.borderColor = clr} onBlur={e => e.target.style.borderColor = "#e5e7eb"} />
+        </Section>
+
+        <Section label="Topic">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {TOPICS.map(t => {
+              var on = topic === t.key;
+              return (
+                <button key={t.key} className="topic-card" onClick={() => setTopic(t.key)} style={{
+                  padding: "10px 12px", borderRadius: 10, border: "2px solid " + (on ? t.color : "#e5e7eb"),
+                  background: on ? t.color + "10" : "white", cursor: "pointer", textAlign: "left",
+                  display: "flex", alignItems: "center", gap: 8,
+                }}>
+                  <span style={{ fontSize: 18 }}>{t.emoji}</span>
+                  <span style={{ fontWeight: on ? 800 : 600, color: on ? t.color : "#475569", fontSize: 13 }}>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+
+        <Section label="Difficulty">
+          <div style={{ display: "flex", gap: 8 }}>
+            {DIFFICULTIES.map(d => {
+              var on = difficulty === d.key;
+              return <button key={d.key} className="btn-hover" onClick={() => setDifficulty(d.key)} style={{
+                flex: 1, padding: "10px 6px", borderRadius: 10, border: "2px solid " + (on ? clr : "#e5e7eb"),
+                background: on ? clr + "10" : "white", cursor: "pointer", fontWeight: on ? 800 : 600,
+                color: on ? clr : "#475569", fontSize: 12,
+              }}>{d.label}</button>;
+            })}
+          </div>
+        </Section>
+
+        <Section label="Layout (Accessibility)">
+          <div style={{ display: "flex", gap: 8 }}>
+            {LAYOUTS.map(l => {
+              var on = layoutKey === l.key;
+              return <button key={l.key} className="btn-hover" onClick={() => setLayoutKey(l.key)} style={{
+                flex: 1, padding: "10px 6px", borderRadius: 10, border: "2px solid " + (on ? clr : "#e5e7eb"),
+                background: on ? clr + "10" : "white", cursor: "pointer", textAlign: "center",
+              }}>
+                <div style={{ fontWeight: on ? 800 : 600, color: on ? clr : "#475569", fontSize: 13 }}>{l.label}</div>
+                <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{l.desc}</div>
+              </button>;
+            })}
+          </div>
+        </Section>
+
+        <Section label={"Number of Problems: " + count}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 700 }}>5</span>
+            <input type="range" min={5} max={30} value={count} onChange={e => setCount(Number(e.target.value))}
+              style={{ flex: 1, accentColor: clr }} />
+            <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 700 }}>30</span>
+          </div>
+        </Section>
+
+        <button className="btn-hover" onClick={handleGenerate} style={{
+          width: "100%", padding: 15, borderRadius: 12, background: clr, color: "white",
+          border: "none", fontSize: 17, fontWeight: 800, cursor: "pointer",
+          boxShadow: "0 4px 16px " + clr + "33",
+        }}>Generate Worksheet {"\u2728"}</button>
+      </div>
+
+      {/* Share */}
+      <div style={{ textAlign: "center", marginBottom: 16 }}>
+        <button className="btn-hover" onClick={handleWhatsApp} style={{
+          background: "#25d366", color: "white", border: "none", borderRadius: 12,
+          padding: "11px 32px", fontWeight: 700, cursor: "pointer", fontSize: 15,
+          boxShadow: "0 3px 10px rgba(37,211,102,0.3)",
+        }}>{"\uD83D\uDCE8 Share on WhatsApp"}</button>
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign: "center", padding: "8px 20px 28px", color: "#94a3b8", fontSize: 11, lineHeight: 1.7 }}>
+        <strong>MathMind &mdash; Free &amp; Open Source</strong><br />
+        Designed for children with autism and diverse learning needs.<br />
+        Made with &#10084;&#65039; by a parent who understands.
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
